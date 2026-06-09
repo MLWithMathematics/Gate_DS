@@ -1,7 +1,7 @@
 import type { MCQ, Subject, Difficulty, MockTest, User, LeaderboardEntry, SubjectProgress, WeeklyStats, DailyProgress } from '@/types'
 import { useAuthStore } from '@/store'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
 
 // Helper fetch wrapper
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
