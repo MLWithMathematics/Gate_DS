@@ -215,7 +215,7 @@ export default function AdminPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-flux-dark mb-1">Subject</label>
-                  <input required value={editingMcq.subject || ''} onChange={(e) => setEditingMcq({...editingMcq, subject: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-flux-blue focus:ring-1 focus:ring-flux-blue" />
+                  <input required value={editingMcq.subject || ''} onChange={(e) => setEditingMcq({...editingMcq, subject: e.target.value as any})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-flux-blue focus:ring-1 focus:ring-flux-blue" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-flux-dark mb-1">Topic</label>
