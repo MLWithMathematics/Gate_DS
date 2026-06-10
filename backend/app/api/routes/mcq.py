@@ -25,14 +25,15 @@ async def list_mcqs(
     topic: str | None = Query(None),
     difficulty: str | None = Query(None),
     source_type: str | None = Query(None),
-    limit: int = Query(default=10, ge=1, le=50),
+    limit: int = Query(default=200, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
 ):
-    """List MCQs with optional filtering."""
+    """List MCQs with optional filtering. Returns ALL matching Supabase MCQs + seed data."""
     try:
-        # Try Supabase first, fall back to seed data
+        # Fetch from Supabase
         mcqs = await get_mcqs(subject=subject, topic=topic, difficulty=difficulty, limit=limit, offset=offset)
         
+        # Also include seed data (deduplicated by ID)
         seed = SEED_MCQS
         if subject:
             seed = [m for m in seed if m["subject"] == subject]
@@ -46,7 +47,7 @@ async def list_mcqs(
             if s["id"] not in existing_ids:
                 mcqs.append(s)
                 
-        return mcqs[offset : offset + limit]
+        return mcqs
     except Exception as e:
         logger.error(f"Error listing MCQs: {e}")
         # Return seed data as fallback

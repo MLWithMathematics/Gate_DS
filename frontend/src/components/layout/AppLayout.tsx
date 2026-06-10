@@ -105,16 +105,11 @@ export default function AppLayout() {
         onClick={() => navigate('/app/dashboard')}
         className={`flex items-center gap-3 px-4 py-5 border-b border-flux-border cursor-pointer text-left w-full hover:bg-flux-light transition-colors ${collapsed ? 'justify-center' : ''}`}
       >
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: '#0F2044' }}
-        >
-          <Zap size={17} className="text-white" />
-        </div>
+        <img src="/logo.png" alt="NeuralLearning" className="w-8 h-8 object-contain flex-shrink-0" />
         {!collapsed && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="leading-none">
-            <div className="font-display text-base font-bold text-flux-dark tracking-tight">GATE.AI</div>
-            <div className="text-[10px] text-flux-slate mt-0.5 font-mono">DATA SCIENCE & AI</div>
+            <div className="font-display text-base font-bold text-flux-dark tracking-tight">NeuralLearning</div>
+            <div className="text-[10px] text-flux-slate mt-0.5 font-mono">LEARN ANYWHERE</div>
           </motion.div>
         )}
       </button>

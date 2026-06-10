@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
@@ -163,6 +163,7 @@ export default function MCQPage() {
   const [aiContent, setAiContent] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
+  const [allFetchedQuestions, setAllFetchedQuestions] = useState<MCQ[]>([])
   const [questions, setQuestions] = useState<MCQ[]>(MOCK_MCQs)
   const [fetchingQuestions, setFetchingQuestions] = useState(false)
 
@@ -177,25 +178,34 @@ export default function MCQPage() {
       try {
         const subject = filteredSubject !== 'All' ? filteredSubject : undefined
         const difficulty = filteredDifficulty !== 'All' ? filteredDifficulty : undefined
-        const topic = filteredTopic !== 'All' ? filteredTopic : undefined
-        const data = await mcqAPI.getQuestions(subject, topic, difficulty, 20)
-        setQuestions(data || [])
+        // Fetch all topics for this subject from backend
+        const data = await mcqAPI.getQuestions(subject, undefined, difficulty, 500)
+        setAllFetchedQuestions(data || [])
       } catch {
         // Fallback to local mock data ONLY if backend fails
         const filtered = MOCK_MCQs.filter(q => {
           if (filteredSubject !== 'All' && q.subject !== filteredSubject) return false
           if (filteredDifficulty !== 'All' && q.difficulty !== filteredDifficulty) return false
-          if (filteredTopic !== 'All' && q.topic !== filteredTopic) return false
           return true
         })
-        setQuestions(filtered)
+        setAllFetchedQuestions(filtered)
       } finally {
         setFetchingQuestions(false)
         setQuestionIndex(0)
       }
     }
     fetchQuestions()
-  }, [filteredSubject, filteredDifficulty, filteredTopic])
+  }, [filteredSubject, filteredDifficulty])
+
+  // Apply topic filter locally so we have access to all unique topics
+  useEffect(() => {
+    if (filteredTopic === 'All') {
+      setQuestions(allFetchedQuestions)
+    } else {
+      setQuestions(allFetchedQuestions.filter(q => q.topic === filteredTopic))
+    }
+    setQuestionIndex(0)
+  }, [allFetchedQuestions, filteredTopic])
 
   const mcq = questions[questionIndex]
 
@@ -313,7 +323,11 @@ export default function MCQPage() {
     }
   }, [mcq])
 
-  const topics = filteredSubject !== 'All' ? SUBJECT_TOPICS[filteredSubject] : []
+  const topics = useMemo(() => {
+    if (filteredSubject === 'All') return []
+    const uniqueTopics = Array.from(new Set(allFetchedQuestions.map(q => q.topic))).filter(Boolean)
+    return uniqueTopics.sort()
+  }, [allFetchedQuestions, filteredSubject])
   const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
   const timerPct = mcq ? (timeLeft / (mcq.difficulty === 'Easy' ? 60 : mcq.difficulty === 'Medium' ? 90 : 120)) * 100 : 100
 
@@ -349,7 +363,7 @@ export default function MCQPage() {
               <div>
                 <label className="text-xs text-flux-slate mb-2 block font-medium">Subject</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {['All', ...GATE_DA_SUBJECTS.slice(0, 6)].map(s => (
+                  {['All', ...GATE_DA_SUBJECTS].map(s => (
                     <button
                       key={s}
                       onClick={() => { setFilteredSubject(s as Subject | 'All'); setFilteredTopic('All'); setQuestionIndex(0) }}
@@ -413,31 +427,33 @@ export default function MCQPage() {
       )}
 
       {/* Question or Empty State */}
-      {questions.length === 0 && !fetchingQuestions ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-10 rounded-2xl flex flex-col items-center justify-center text-center mt-8"
-        >
-          <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
-            <Brain size={32} className="text-flux-blue opacity-50" />
-          </div>
-          <h3 className="text-lg font-bold text-flux-dark mb-2">No questions found</h3>
-          <p className="text-sm text-flux-slate mb-6 max-w-sm mx-auto">
-            We couldn't find any questions matching your current filters. Try selecting a different topic or clearing your filters.
-          </p>
-          <button
-            onClick={() => {
-              setFilteredSubject('All')
-              setFilteredTopic('All')
-              setFilteredDifficulty('All')
-            }}
-            className="px-5 py-2.5 rounded-xl bg-slate-100 text-flux-dark font-medium text-sm hover:bg-slate-200 transition-colors"
+      {questions.length === 0 ? (
+        !fetchingQuestions && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card p-10 rounded-2xl flex flex-col items-center justify-center text-center mt-8"
           >
-            Clear Filters
-          </button>
-        </motion.div>
-      ) : (
+            <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
+              <Brain size={32} className="text-flux-blue opacity-50" />
+            </div>
+            <h3 className="text-lg font-bold text-flux-dark mb-2">No questions found</h3>
+            <p className="text-sm text-flux-slate mb-6 max-w-sm mx-auto">
+              We couldn't find any questions matching your current filters. Try selecting a different topic or clearing your filters.
+            </p>
+            <button
+              onClick={() => {
+                setFilteredSubject('All')
+                setFilteredTopic('All')
+                setFilteredDifficulty('All')
+              }}
+              className="px-5 py-2.5 rounded-xl bg-slate-100 text-flux-dark font-medium text-sm hover:bg-slate-200 transition-colors"
+            >
+              Clear Filters
+            </button>
+          </motion.div>
+        )
+      ) : mcq ? (
         <>
           {/* Progress bar + Timer row */}
       <div className="flex items-center gap-4 mb-5">
@@ -538,7 +554,7 @@ export default function MCQPage() {
         {(aiContent || aiLoading) && <AIPanel content={aiContent} loading={aiLoading} />}
       </motion.div>
         </>
-      )}
+      ) : null}
 
       {/* Stats bar */}
       <div className="mt-4 grid grid-cols-3 gap-3">

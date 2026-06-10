@@ -39,16 +39,16 @@ async def get_mcqs(
     subject: str | None = None,
     topic: str | None = None,
     difficulty: str | None = None,
-    limit: int = 10,
+    limit: int = 200,
     offset: int = 0,
 ) -> list[dict]:
     try:
         db = get_supabase()
         query = db.table("mcqs").select("*")
         if subject:
-            query = query.eq("subject", subject)
+            query = query.ilike("subject", f"%{subject}%")
         if topic:
-            query = query.eq("topic", topic)
+            query = query.ilike("topic", f"%{topic}%")
         if difficulty:
             query = query.eq("difficulty", difficulty)
         result = query.range(offset, offset + limit - 1).execute()

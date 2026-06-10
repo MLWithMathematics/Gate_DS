@@ -143,18 +143,13 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{ background: isDarkMode ? 'linear-gradient(135deg, #6366F1, #8B5CF6)' : '#0F2044' }}
-            >
-              <Zap size={15} className="text-white" />
-            </div>
-            <span className="font-display text-lg font-bold tracking-tight" style={{ color: 'var(--landing-text)' }}>GATE.AI</span>
+            <img src="/logo.png" alt="NeuralLearning Logo" className="w-8 h-8 object-contain" />
+            <span className="font-display text-lg font-bold tracking-tight" style={{ color: 'var(--landing-text)' }}>NeuralLearning</span>
           </div>
 
           {/* Links — desktop */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium" style={{ color: 'var(--landing-text-muted)' }}>
-            {['Features', 'Process', 'Testimonials', 'Pricing'].map(l => (
+            {['Features', 'Process', 'Testimonials'].map(l => (
               <a key={l} href={`#${l.toLowerCase()}`}
                 className="hover:opacity-80 transition-opacity">{l}</a>
             ))}
@@ -589,7 +584,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ──────────────── PRICING ──────────────── */}
+      {/* ──────────────── PRICING (Hidden for now) ──────────────── */}
+      {/* 
       <section className="py-24 px-4" id="pricing" style={{ background: 'var(--landing-bg-alt)' }}>
         <div className="max-w-5xl mx-auto">
           <motion.div
@@ -648,6 +644,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      */}
 
       {/* ──────────────── CTA BAND ──────────────── */}
       <section className="py-24 px-4 section-dark">
@@ -682,10 +679,8 @@ export default function LandingPage() {
             {/* Brand */}
             <div className="md:col-span-2">
               <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/10">
-                  <Zap size={15} className="text-white" />
-                </div>
-                <span className="font-display text-lg font-bold text-white">GATE.AI</span>
+                <img src="/logo.png" alt="NeuralLearning Logo" className="w-8 h-8 object-contain" />
+                <span className="font-display text-lg font-bold text-white">NeuralLearning</span>
               </div>
               <p className="text-slate-400 text-sm leading-relaxed max-w-xs">
                 The most intelligent GATE DS preparation platform, powered by AI and built for serious aspirants.
@@ -707,7 +702,7 @@ export default function LandingPage() {
               <div className="text-white font-semibold text-sm mb-4">Get in Touch</div>
               <div className="text-slate-400 text-sm space-y-2">
                 <div>support@gate.ai</div>
-                <div>Udaipur, Rajasthan, India</div>
+                <div>Churu, Rajasthan, India</div>
               </div>
               <div className="mt-5">
                 <div className="text-white font-semibold text-sm mb-3">Newsletter</div>
@@ -727,12 +722,12 @@ export default function LandingPage() {
 
           <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-slate-500 text-xs">
-              © 2025 GATE.AI · Built with ❤️ for GATE DS aspirants · Powered by AI
+              © NeuralLearning · Built with ❤️ for GATE DS aspirants · Powered by AI
             </p>
-            <div className="flex items-center gap-1.5">
+            {/* <div className="flex items-center gap-1.5">
               <TrendingUp size={13} className="text-blue-400" />
-              <span className="text-slate-500 text-xs">v1.0.0 · GATE 2025</span>
-            </div>
+              <span className="text-slate-500 text-xs">v1.0.0 · GATE 2027</span>
+            </div> */}
           </div>
         </div>
       </footer>

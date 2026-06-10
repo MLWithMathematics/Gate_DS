@@ -44,14 +44,14 @@ class MCQOption(BaseModel):
 
 
 class MCQBase(BaseModel):
-    subject: Subject
+    subject: str
     topic: str
     question: str
     options: List[MCQOption]
     answer: str
     explanation: str
-    difficulty: Difficulty
-    source_type: SourceType
+    difficulty: str
+    source_type: str = "Generated"
     year: Optional[int] = None
     tags: Optional[List[str]] = []
 

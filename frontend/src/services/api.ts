@@ -41,7 +41,7 @@ export const authAPI = {
 
 // ===== MCQ API =====
 export const mcqAPI = {
-  getQuestions: (subject?: Subject, topic?: string, difficulty?: Difficulty, limit = 20) => {
+  getQuestions: (subject?: Subject, topic?: string, difficulty?: Difficulty, limit = 500) => {
     const params = new URLSearchParams()
     if (subject) params.set('subject', subject)
     if (topic) params.set('topic', topic)
