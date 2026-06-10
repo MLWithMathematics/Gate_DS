@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     # AI APIs
     GROQ_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
 
     # Models
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
