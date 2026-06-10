@@ -372,7 +372,7 @@ async def generate_study_plan(
     daily_hours: int = 4,
 ) -> str:
     """Generate personalized study plan using Gemini."""
-    prompt = f"""Create a detailed {days_until_exam}-day GATE DS study plan EXCLUSIVELY focused on the student's weak subjects.
+    prompt = f"""Create a highly structured and visually appealing {days_until_exam}-day GATE DS study plan EXCLUSIVELY focused on the student's weak subjects.
 
 Student Profile:
 - Weak subjects to focus on: {', '.join(weak_subjects)}
@@ -381,24 +381,83 @@ Student Profile:
 
 STRICT INSTRUCTION: Do NOT include, mention, or allocate study time to any subjects other than the specific weak subjects listed above. The entire study plan must be dedicated 100% to mastering these specific weak subjects.
 
-Create a comprehensive plan with:
-1. Week-by-week breakdown (focused ONLY on the weak subjects)
-2. Daily schedule template
-3. Subject-wise time allocation (distributing time ONLY among the weak subjects)
-4. Practice test schedule for these specific subjects
-5. Revision strategy for final week
-6. Topic prioritization based on GATE syllabus weight for these weak subjects
+Formatting Rules:
+- Use **Emojis** for every heading and list item to make it engaging (e.g., 📅, 🎯, 📊, 🧠, ✅).
+- Use plenty of **spacing** and line breaks to ensure readability.
+- Use **Markdown tables** for schedules.
+- Add horizontal rules (`---`) between major sections.
+- Keep the tone highly encouraging and professional.
 
-Format with clear markdown headers, tables, and bullet points."""
+Structure the plan exactly like this:
+1. 🎯 **Strategy Overview**: A brief encouraging summary.
+2. 📊 **Week-by-Week Breakdown**: Clear bullet points for each week.
+3. 📈 **Daily Schedule Template**: A markdown table showing the {daily_hours} hours broken down by activity.
+4. 🧠 **AI Recommendations**: 3-4 tips specifically for the weak subjects.
+5. ✅ **Weekly Targets**: Specific measurable goals.
+"""
 
     try:
-        llm = ChatGoogleGenerativeAI(
-            model=settings.GEMINI_MODEL,
-            google_api_key=settings.GOOGLE_API_KEY,
+        from langchain_groq import ChatGroq
+        llm = ChatGroq(
+            model=settings.GROQ_MODEL,
+            groq_api_key=settings.GROQ_API_KEY,
             temperature=0.3,
+            max_tokens=2000,
         )
         response = await llm.ainvoke([HumanMessage(content=prompt)])
         return response.content
     except Exception as e:
         logger.error(f"Study plan generation failed: {e}")
         return "Study plan generation temporarily unavailable. Please try again."
+
+async def study_plan_chat_stream(
+    existing_plan: str,
+    user_message: str,
+    chat_history: list[dict] | None = None,
+) -> AsyncGenerator[str, None]:
+    """Stream AI response for study plan refinement chat."""
+    system_prompt = f"""You are a helpful GATE DS AI Tutor assisting a student with their existing study plan.
+
+Their Current Study Plan:
+{existing_plan}
+
+Your Rules:
+- Help the student adjust, refine, or understand their study plan.
+- If they ask for modifications (e.g., "reduce my hours", "remove databases"), acknowledge the change and output the updated portions of the plan, or give them advice.
+- Be encouraging and concise.
+- Use markdown formatting.
+- Do NOT output the entire plan again unless explicitly asked to completely rewrite it. Usually, just explain the adjustments or output the modified sections.
+"""
+
+    messages = [SystemMessage(content=system_prompt)]
+    if chat_history:
+        for msg in chat_history[-4:]:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role == "user":
+                messages.append(HumanMessage(content=content))
+            else:
+                from langchain_core.messages import AIMessage
+                messages.append(AIMessage(content=content))
+
+    messages.append(HumanMessage(content=user_message))
+
+    try:
+        from langchain_groq import ChatGroq
+        llm = ChatGroq(
+            model=settings.GROQ_MODEL,
+            groq_api_key=settings.GROQ_API_KEY,
+            temperature=0.3,
+            max_tokens=1500,
+            streaming=True,
+        )
+        async for chunk in llm.astream(messages):
+            if chunk.content:
+                yield chunk.content
+    except Exception as e:
+        logger.error(f"Study plan chat stream failed: {e}")
+        import asyncio
+        fallback = "I'm having trouble analyzing your study plan right now. Please try again in a moment."
+        for word in fallback.split(" "):
+            yield word + " "
+            await asyncio.sleep(0.02)

@@ -265,6 +265,15 @@ class StudyPlanRequest(BaseModel):
     daily_hours: int = Field(default=4, ge=1, le=12)
     target_score: int = Field(default=80, ge=50, le=100)
 
+class StudyPlanSaveRequest(BaseModel):
+    user_id: str
+    plan_text: str
+
+class StudyPlanChatRequest(BaseModel):
+    user_id: str
+    message: str
+    chat_history: Optional[List[Dict[str, str]]] = []
+
 
 class StudyPlanResponse(BaseModel):
     plan: str

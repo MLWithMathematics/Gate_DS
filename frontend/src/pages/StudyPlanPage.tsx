@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { Calendar, Zap, BookOpen, Target, Clock, CheckCircle2, Circle, Brain, Sparkles } from 'lucide-react'
+import remarkGfm from 'remark-gfm'
+import { Calendar, Zap, BookOpen, Target, Clock, CheckCircle2, Circle, Brain, Sparkles, MessageSquare, Send } from 'lucide-react'
 import { useAuthStore, useProgressStore } from '@/store'
 import { studyPlanAPI, simulateStream } from '@/services/api'
 import type { Subject } from '@/types'
@@ -65,6 +66,29 @@ export default function StudyPlanPage() {
   const [daysLeft, setDaysLeft] = useState(60)
   const [showPlan, setShowPlan] = useState(false)
 
+  // Chat state
+  const [chatHistory, setChatHistory] = useState<{ role: string, content: string }[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [isChatting, setIsChatting] = useState(false)
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (user?.id) {
+      studyPlanAPI.get(user.id)
+        .then(res => {
+          if (res.plan) {
+            setAiPlan(res.plan)
+            setShowPlan(true)
+          }
+        })
+        .catch(e => console.log("No existing plan found", e))
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [chatHistory])
+
   const completed = tasks.filter(t => t.done).length
   const totalTime = tasks.reduce((s, t) => s + t.time, 0)
   const completedTime = tasks.filter(t => t.done).reduce((s, t) => s + t.time, 0)
@@ -87,6 +111,7 @@ export default function StudyPlanPage() {
     setGenerating(true)
     setShowPlan(true)
     setAiPlan('')
+    setChatHistory([])
 
     try {
       const response = await studyPlanAPI.generate(user?.id || 'anonymous', daysLeft, 6)
@@ -95,69 +120,57 @@ export default function StudyPlanPage() {
         setAiPlan(p => p + chunk)
       }
     } catch {
-      const planText = `## 📅 Your Personalized ${daysLeft}-Day GATE DS Study Plan
-
-### 🎯 Strategy Overview
-Based on your performance data, here's an optimized plan focusing on **${weakSubjects.join(', ')}** — your weakest areas.
-
----
-
-### 📊 Week-by-Week Breakdown
-
-**Weeks 1–2: Foundation Reinforcement**
-- **Deep Learning** (2h/day): Master backpropagation, CNNs, attention mechanisms
-- **Databases** (1h/day): SQL joins, normalization, query optimization
-- **Daily MCQs**: 20 questions mixed difficulty
-
-**Weeks 3–4: Core Strengthening**
-- **Statistics** (1.5h/day): Bayesian inference, distributions, hypothesis testing
-- **Machine Learning** (1.5h/day): Ensemble methods, feature engineering
-- **Mock Test**: 1 subject-specific test every weekend
-
-**Weeks 5–6: Advanced Topics**
-- **Linear Algebra** (1h/day): SVD, eigendecomposition, PCA derivations
-- **Mathematics** (1h/day): Optimization (gradient descent, convexity)
-- **PYQ Practice**: Solve 3 years of previous papers
-
-**Weeks 7–8: Revision + Mocks**
-- Full-length mock test every 3 days
-- Revise weak topics based on mock analysis
-- Focus on speed: aim for 2 min/question
-
----
-
-### 📈 Daily Schedule Template
-| Time | Activity | Duration |
-|------|----------|----------|
-| 7:00 AM | Concept Study | 90 min |
-| 9:00 AM | MCQ Practice | 60 min |
-| 11:00 AM | PYQ Solving | 45 min |
-| 4:00 PM | AI Doubt Solving | 30 min |
-| 8:00 PM | Mock Test / Revision | 60 min |
-
----
-
-### 🧠 AI Recommendations
-1. Use the **AI Tutor** daily for concepts you struggle with
-2. Maintain your **12-day streak** — consistency beats intensity
-3. Focus on **Deep Learning transformers** — appeared in 4/5 recent GATE papers
-4. **SQL query optimization** is highly weighted in GATE DS 2024–2025
-
----
-
-### ✅ Weekly Targets
-- Week 1: 140 MCQs, 80% accuracy on Easy questions
-- Week 2: 160 MCQs, introduce Medium difficulty
-- Week 4: First full mock test > 65% score
-- Week 6: Mock test consistently > 75%
-- Week 8: Final mocks > 85%, ready for exam day`
-
+      const planText = `## 📅 Your Personalized ${daysLeft}-Day GATE DS Study Plan\n\nStudy plan generation temporarily unavailable. Please try again.`
       const stream = simulateStream(planText, 8)
       for await (const chunk of stream) {
         setAiPlan(p => p + chunk)
       }
     } finally {
       setGenerating(false)
+    }
+  }
+
+  const handleChatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!chatInput.trim() || !user?.id) return
+
+    const newMsg = { role: 'user', content: chatInput }
+    setChatHistory(prev => [...prev, newMsg])
+    setChatInput('')
+    setIsChatting(true)
+    
+    setChatHistory(prev => [...prev, { role: 'assistant', content: '' }])
+
+    try {
+      const stream = studyPlanAPI.chatStream(user.id, newMsg.content, chatHistory)
+      let aiText = ''
+      for await (const chunk of stream) {
+        aiText += chunk
+        setChatHistory(prev => {
+          const newHist = [...prev]
+          newHist[newHist.length - 1] = { role: 'assistant', content: aiText }
+          return newHist
+        })
+      }
+    } catch (err) {
+      console.error(err)
+      setChatHistory(prev => {
+        const newHist = [...prev]
+        newHist[newHist.length - 1] = { role: 'assistant', content: "Sorry, I couldn't process that right now." }
+        return newHist
+      })
+    } finally {
+      setIsChatting(false)
+    }
+  }
+
+  const handleSetAsMainPlan = async (text: string) => {
+    if (!user?.id) return
+    setAiPlan(text)
+    try {
+      await studyPlanAPI.save(user.id, text)
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -233,29 +246,75 @@ Based on your performance data, here's an optimized plan focusing on **${weakSub
         </button>
       </motion.div>
 
-      {/* AI Generated Plan */}
+      {/* AI Generated Plan & Refinement Chat */}
       <AnimatePresence>
         {showPlan && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="glass-card p-5 rounded-2xl border border-cyan-200"
-            style={{ background: 'linear-gradient(135deg, #F0FDFA, #EFF6FF)' }}
+            className="space-y-4"
           >
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles size={14} className="text-cyan-600" />
-              <h3 className="text-sm font-semibold text-flux-dark">Your AI Study Plan</h3>
-              {generating && (
-                <div className="flex gap-1 ml-2">
-                  {[0,1,2].map(i => (
-                    <motion.div key={i} className="w-1.5 h-1.5 rounded-full bg-cyan-500"
-                      animate={{ scale: [1,1.5,1] }} transition={{ duration: 0.6, delay: i*0.15, repeat: Infinity }} />
-                  ))}
-                </div>
-              )}
+            <div className="glass-card p-5 rounded-2xl border border-cyan-200" style={{ background: 'linear-gradient(135deg, #F0FDFA, #EFF6FF)' }}>
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles size={14} className="text-cyan-600" />
+                <h3 className="text-sm font-semibold text-flux-dark">Your AI Study Plan</h3>
+                {generating && (
+                  <div className="flex gap-1 ml-2">
+                    {[0,1,2].map(i => (
+                      <motion.div key={i} className="w-1.5 h-1.5 rounded-full bg-cyan-500"
+                        animate={{ scale: [1,1.5,1] }} transition={{ duration: 0.6, delay: i*0.15, repeat: Infinity }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="ai-prose max-h-[500px] overflow-y-auto pr-2">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiPlan}</ReactMarkdown>
+              </div>
             </div>
-            <div className="ai-prose max-h-[500px] overflow-y-auto pr-2">
-              <ReactMarkdown>{aiPlan}</ReactMarkdown>
+
+            {/* AI Refinement Chat */}
+            <div className="glass-card p-5 rounded-2xl border border-blue-100">
+              <div className="flex items-center gap-2 mb-4">
+                <MessageSquare size={15} className="text-flux-blue" />
+                <h3 className="text-sm font-semibold text-flux-dark">Refine Plan with AI Tutor</h3>
+              </div>
+              
+              <div className="space-y-3 mb-4 max-h-64 overflow-y-auto pr-2">
+                {chatHistory.map((msg, i) => (
+                  <div key={i} className={`p-3 rounded-xl text-sm ${msg.role === 'user' ? 'bg-blue-50 ml-8 border border-blue-100' : 'bg-slate-50 mr-8 border border-slate-200'}`}>
+                    <div className="text-[10px] text-slate-400 mb-1">{msg.role === 'user' ? 'You' : 'AI Tutor'}</div>
+                    <div className="ai-prose text-xs"><ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown></div>
+                    
+                    {msg.role === 'assistant' && (
+                      <button 
+                        onClick={() => handleSetAsMainPlan(msg.content)}
+                        className="mt-2 text-[10px] font-semibold text-flux-blue bg-blue-100/50 px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+                      >
+                        Set as Main Plan
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+
+              <form onSubmit={handleChatSubmit} className="flex gap-2">
+                <input 
+                  type="text" 
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  placeholder="E.g., Can you remove Databases and add more Math?"
+                  className="flex-1 input-field text-sm"
+                  disabled={isChatting}
+                />
+                <button 
+                  type="submit" 
+                  disabled={isChatting || !chatInput.trim()}
+                  className="bg-flux-blue text-white p-2 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  <Send size={16} />
+                </button>
+              </form>
             </div>
           </motion.div>
         )}

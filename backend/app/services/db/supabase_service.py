@@ -260,6 +260,48 @@ async def get_mock_test_history(user_id: str, limit: int = 10) -> list[dict]:
         return []
 
 
+# ===== Study Plan Operations =====
+
+async def upsert_study_plan(user_id: str, plan_text: str) -> dict | None:
+    try:
+        db = get_supabase()
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+        
+        # Check if plan exists
+        existing = db.table("study_plans").select("id").eq("user_id", user_id).execute()
+        if existing.data:
+            result = db.table("study_plans").update({
+                "plan_text": plan_text,
+                "updated_at": now
+            }).eq("user_id", user_id).execute()
+        else:
+            result = db.table("study_plans").insert({
+                "user_id": user_id,
+                "plan_text": plan_text,
+                "updated_at": now
+            }).execute()
+            
+        return result.data[0] if result.data else None
+    except Exception as e:
+        logger.error(f"Error upserting study plan for {user_id}: {e}")
+        return None
+
+async def get_study_plan(user_id: str) -> dict | None:
+    try:
+        db = get_supabase()
+        result = (
+            db.table("study_plans")
+            .select("*")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+    except Exception as e:
+        logger.error(f"Error fetching study plan for {user_id}: {e}")
+        return None
+
+
 # ===== Chat Cache Operations =====
 
 async def get_cached_response(query_hash: str) -> str | None:

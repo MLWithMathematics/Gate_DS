@@ -216,14 +216,70 @@ async def get_leaderboard_data(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+from fastapi.responses import StreamingResponse
+from app.schemas.schemas import StudyPlanSaveRequest, StudyPlanChatRequest
+from app.services.db.supabase_service import upsert_study_plan, get_study_plan as db_get_study_plan
+from app.services.rag.rag_pipeline import study_plan_chat_stream
+
 # ===== Study Plan Router =====
 
 study_plan_router = APIRouter(prefix="/api/study-plan", tags=["Study Plan"])
 
+@study_plan_router.get("/{user_id}", response_model=StudyPlanResponse)
+async def get_study_plan_endpoint(user_id: str):
+    """Get the user's saved study plan."""
+    try:
+        plan = await db_get_study_plan(user_id)
+        if not plan:
+            raise HTTPException(status_code=404, detail="No study plan found")
+        return StudyPlanResponse(
+            plan=plan.get("plan_text", ""),
+            daily_schedule=[],
+            weekly_goals=[],
+            focus_areas=[]
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching study plan: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@study_plan_router.post("/save", response_model=dict)
+async def save_study_plan_endpoint(request: StudyPlanSaveRequest):
+    """Manually save or overwrite a study plan."""
+    try:
+        result = await upsert_study_plan(request.user_id, request.plan_text)
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to save study plan")
+        return {"status": "success", "message": "Study plan saved successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error saving study plan: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@study_plan_router.post("/chat")
+async def chat_study_plan_endpoint(request: StudyPlanChatRequest):
+    """Stream AI response for study plan chat."""
+    try:
+        plan = await db_get_study_plan(request.user_id)
+        plan_text = plan.get("plan_text", "No plan found") if plan else "No plan found"
+        
+        return StreamingResponse(
+            study_plan_chat_stream(
+                existing_plan=plan_text,
+                user_message=request.message,
+                chat_history=request.chat_history,
+            ),
+            media_type="text/event-stream"
+        )
+    except Exception as e:
+        logger.error(f"Study plan chat error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @study_plan_router.post("", response_model=StudyPlanResponse)
 async def create_study_plan(request: StudyPlanRequest):
-    """Generate AI-powered study plan."""
+    """Generate AI-powered study plan and save it."""
     try:
         records = await get_user_progress(request.user_id)
         weak_subjects = sorted(
@@ -238,6 +294,9 @@ async def create_study_plan(request: StudyPlanRequest):
             days_until_exam=request.days_until_exam,
             daily_hours=request.daily_hours,
         )
+        
+        # Save the plan to the database automatically
+        await upsert_study_plan(request.user_id, plan_text)
 
         return StudyPlanResponse(
             plan=plan_text,

@@ -217,6 +217,38 @@ export const studyPlanAPI = {
       method: 'POST',
       body: JSON.stringify({ user_id: userId, days_until_exam: daysLeft, daily_hours: dailyHours }),
     }),
+  get: (userId: string) =>
+    apiFetch<{ plan: string }>(`/api/study-plan/${userId}`),
+  save: (userId: string, planText: string) =>
+    apiFetch<{ status: string }>('/api/study-plan/save', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId, plan_text: planText }),
+    }),
+  async *chatStream(userId: string, message: string, chatHistory: any[] = []): AsyncGenerator<string> {
+    const token = useAuthStore.getState().token
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    const response = await fetch(`${API_BASE}/api/study-plan/chat`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ user_id: userId, message, chat_history: chatHistory }),
+    })
+
+    if (!response.ok || !response.body) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Chat error')
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      yield decoder.decode(value, { stream: true })
+    }
+  }
 }
 
 // ===== Subjects API =====
