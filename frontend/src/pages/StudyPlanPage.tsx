@@ -69,10 +69,15 @@ export default function StudyPlanPage() {
   const totalTime = tasks.reduce((s, t) => s + t.time, 0)
   const completedTime = tasks.filter(t => t.done).reduce((s, t) => s + t.time, 0)
 
-  const weakSubjects = [...subjectProgress]
+  let weakSubjects = [...subjectProgress]
+    .filter(s => s.accuracy < 70 && s.attempts > 0)
     .sort((a, b) => a.accuracy - b.accuracy)
     .slice(0, 3)
     .map(s => s.subject)
+
+  if (weakSubjects.length === 0) {
+    weakSubjects = ['Deep Learning' as Subject, 'Databases' as Subject, 'Statistics' as Subject]
+  }
 
   const toggleTask = (id: string) => {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t))
