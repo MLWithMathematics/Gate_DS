@@ -215,7 +215,7 @@ export const studyPlanAPI = {
   generate: (userId: string, daysLeft: number, dailyHours: number = 6) =>
     apiFetch<{ plan: string }>('/api/study-plan', {
       method: 'POST',
-      body: JSON.stringify({ user_id: userId, days_left: daysLeft, daily_hours: dailyHours }),
+      body: JSON.stringify({ user_id: userId, days_until_exam: daysLeft, daily_hours: dailyHours }),
     }),
 }
 

@@ -372,20 +372,22 @@ async def generate_study_plan(
     daily_hours: int = 4,
 ) -> str:
     """Generate personalized study plan using Gemini."""
-    prompt = f"""Create a detailed {days_until_exam}-day GATE DS study plan.
+    prompt = f"""Create a detailed {days_until_exam}-day GATE DS study plan EXCLUSIVELY focused on the student's weak subjects.
 
 Student Profile:
-- Weak subjects: {', '.join(weak_subjects)}
+- Weak subjects to focus on: {', '.join(weak_subjects)}
 - Available study time: {daily_hours} hours/day
 - Exam: GATE DS (Data Science & AI)
 
+STRICT INSTRUCTION: Do NOT include, mention, or allocate study time to any subjects other than the specific weak subjects listed above. The entire study plan must be dedicated 100% to mastering these specific weak subjects.
+
 Create a comprehensive plan with:
-1. Week-by-week breakdown
+1. Week-by-week breakdown (focused ONLY on the weak subjects)
 2. Daily schedule template
-3. Subject-wise time allocation (prioritizing weak areas)
-4. Practice test schedule
+3. Subject-wise time allocation (distributing time ONLY among the weak subjects)
+4. Practice test schedule for these specific subjects
 5. Revision strategy for final week
-6. Topic prioritization based on GATE syllabus weight
+6. Topic prioritization based on GATE syllabus weight for these weak subjects
 
 Format with clear markdown headers, tables, and bullet points."""
 
